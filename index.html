@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Record audio in a continuous buffer</title>
+    <script>
+      window.addEventListener('DOMContentLoaded', (event) => {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+           console.log('getUserMedia supported.');
+           navigator.mediaDevices.getUserMedia (
+              // constraints - only audio needed for this app
+              {
+                 audio: true
+              })
+
+              // Success callback
+              .then(function(stream) {
+                const mediaRecorder = new MediaRecorder(stream);
+                const record = document.querySelector("#record-button");
+                const stop = document.querySelector("#stop-button");
+                record.onclick = function() {
+                  if(mediaRecorder.state === "recording"){
+                    return;
+                  }
+                  mediaRecorder.start(100);
+                  console.log(mediaRecorder.state);
+                  console.log("recorder started");
+                  record.style.background = "red";
+                }
+                stop.onclick = function() {
+                  if(mediaRecorder.state === "inactive"){
+                    return;
+                  }
+                  mediaRecorder.stop();
+                  record.style.background = "white";
+                }
+                let chunks = [];
+                mediaRecorder.ondataavailable = function(e) {
+                  const timeSelect = parseInt(document.querySelector('.time-select').value);
+                  if(chunks.length === timeSelect){
+                    chunks.pop();
+                  }
+                  chunks.push(e.data);
+                }
+                mediaRecorder.onstop = function(e) {      
+                  const blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                  const soundClips = document.querySelector('.sound-clips');
+                  const clipContainer = document.createElement('article');
+                  const clipLabel = document.createElement('p');
+                  const audio = document.createElement('audio');
+                  clipContainer.appendChild(audio);
+                  clipContainer.appendChild(clipLabel);
+                  audio.setAttribute('controls', '');
+                  soundClips.appendChild(clipContainer);
+                  chunks = [];      
+                  const audioURL = window.URL.createObjectURL(blob);
+                  audio.src = audioURL;      
+                        
+                }        
+              })
+
+              // Error callback
+              .catch(function(err) {
+                 console.log('The following getUserMedia error occurred: ' + err);
+              }
+           );
+        } else {
+           console.log('getUserMedia not supported on your browser!');
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div class="select-wrapper">
+    <p>Select how much time you want to record</p>
+        <select class="time-select">
+            <option value="100">10 seconds</option>
+            <option value="300">30 seconds</option>
+            <option value="600">1 minute</option>
+            <option value="3600">5 minutes</option>
+        </select>
+    </div>
+    <button id="record-button">Record!</button>
+    <button id="stop-button">Stop</button>
+    <div class="sound-clips"></div>
+  </body>
+</html>
